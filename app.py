@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import requests
 
-app = Flask(__name__)
+app = Flask(_name_)
 
-# Prime check 
+# Prime check (unchanged)
 def is_prime(n):
     if n < 2:
         return False
@@ -12,19 +12,19 @@ def is_prime(n):
             return False
     return True
 
-# Armstrong check 
+# Armstrong check (unchanged)
 def is_armstrong(n):
     digits = [int(d) for d in str(n)]
     power = len(digits)
     return sum(d ** power for d in digits) == n
 
-# Perfect number check 
+# Perfect number check (unchanged)
 def is_perfect(n):
     if n <= 0:  
         return False
     return sum(i for i in range(1, n) if n % i == 0) == n
 
-# Fun fact
+# Fun fact (unchanged)
 def get_fun_fact(n):
     response = requests.get(f"http://numbersapi.com/{n}/math?json")
     if response.status_code == 200:
@@ -38,7 +38,7 @@ def classify_number():
     # Validate input as numeric
     try:
         num_float = float(number_str)
-    except ValueError:
+    except (ValueError, TypeError):
         return jsonify({
             "number": number_str,
             "error": "Invalid input: not a number"
@@ -53,7 +53,7 @@ def classify_number():
 
     num = int(num_float)  # Convert to integer for processing
 
-
+    # Rest of the logic remains the same
     properties = []
     if is_armstrong(num):
         properties.append("armstrong")
@@ -64,11 +64,11 @@ def classify_number():
         "is_prime": is_prime(num),
         "is_perfect": is_perfect(num),
         "properties": properties,
-        "digit_sum": sum(int(d) for d in str(num)),
+        "digit_sum": sum(int(d) for d in str(abs(num))),  # Fix: Use abs()
         "fun_fact": get_fun_fact(num)
     }
 
     return jsonify(response_data)
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     app.run(host='0.0.0.0', port=5000, debug=True)
