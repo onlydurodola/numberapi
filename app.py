@@ -74,6 +74,9 @@ def classify_number():
     }
     
     return jsonify(response), 200
+@app.route('/')
+def root():
+    return "Welcome to the Number API! Access /api/classify-number?number=N to classify a number.", 200
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
