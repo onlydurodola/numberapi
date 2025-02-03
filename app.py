@@ -1,9 +1,9 @@
 from flask import Flask, request, jsonify
 import requests
 
-app = Flask(__name__)
+app = Flask(_name_)
 
-# Function to check if a number is prime
+# Prime check 
 def is_prime(n):
     if n < 2:
         return False
@@ -12,19 +12,19 @@ def is_prime(n):
             return False
     return True
 
-# Function to check if a number is an Armstrong number
+# Armstrong check 
 def is_armstrong(n):
     digits = [int(d) for d in str(n)]
     power = len(digits)
     return sum(d ** power for d in digits) == n
 
-# Function to check if a number is perfect
+# Perfect number check 
 def is_perfect(n):
-    if n <= 0:  # Handle negative numbers and zero
+    if n <= 0:  
         return False
     return sum(i for i in range(1, n) if n % i == 0) == n
 
-# Function to get a fun fact about the number
+# Fun fact
 def get_fun_fact(n):
     response = requests.get(f"http://numbersapi.com/{n}/math?json")
     if response.status_code == 200:
@@ -33,29 +33,42 @@ def get_fun_fact(n):
 
 @app.route('/api/classify-number', methods=['GET'])
 def classify_number():
-    number = request.args.get('number')
-
+    number_str = request.args.get('number')
+    
+    # Validate input as numeric
     try:
-        num = float(number) 
+        num_float = float(number_str)
     except ValueError:
-        return jsonify({"number": "alphabet", "error": True}), 400
+        return jsonify({
+            "number": number_str,
+            "error": "Invalid input: not a number"
+        }), 400
+
+    # Ensure it's an integer (whole number)
+    if not num_float.is_integer():
+        return jsonify({
+            "number": num_float,
+            "error": "Number must be an integer (no decimal)"
+        }), 400
+
+    num = int(num_float)  # Convert to integer for processing
+
 
     properties = []
-
-    if is_armstrong(int(num)): 
+    if is_armstrong(num):
         properties.append("armstrong")
-    properties.append("odd" if int(num) % 2 != 0 else "even")
+    properties.append("odd" if num % 2 != 0 else "even")
 
     response_data = {
-        "number": num, # Return the original float number
-        "is_prime": is_prime(int(num)) if num > 0 else False, 
-        "is_perfect": is_perfect(int(num)), 
+        "number": num,
+        "is_prime": is_prime(num),
+        "is_perfect": is_perfect(num),
         "properties": properties,
-        "digit_sum": sum(int(d) for d in str(int(num))) if num > 0 else 0, 
-        "fun_fact": get_fun_fact(int(num)) 
+        "digit_sum": sum(int(d) for d in str(num)),
+        "fun_fact": get_fun_fact(num)
     }
 
-    return jsonify(response_data), 200 # Return 200 for all valid numbers
+    return jsonify(response_data)
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     app.run(host='0.0.0.0', port=5000, debug=True)
