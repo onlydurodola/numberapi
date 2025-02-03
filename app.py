@@ -1,79 +1,60 @@
-from fastapi import FastAPI, Query
-from fastapi.encoders import jsonable_encoder
-from pydantic import BaseModel
+import os
+from flask import Flask, request, jsonify
 import requests
-from typing import Union
-
-app = FastAPI()
-
-class NumberResponse(BaseModel):
-    number: int
-    is_prime: bool
-    is_perfect: bool
-    properties: list[str]
-    digit_sum: int
-    fun_fact: str
-
-class ErrorResponse(BaseModel):
-    number: str
-    error: bool = True
-
-def is_prime(n: int) -> bool:
-    if n < 2:
+from flask_cors import CORS
+app = Flask(__name__)
+CORS(app)
+# Helper functions to determine properties of a number
+def is_prime(n):
+    if n <= 1:
         return False
-    for i in range(2, int(n**0.5) + 1):
+    for i in range(2, int(n ** 0.5) + 1):
         if n % i == 0:
             return False
     return True
-
-def is_armstrong(n: int) -> bool:
-    digits = [int(d) for d in str(n)]
-    power = len(digits)
-    return sum(d ** power for d in digits) == n
-
-def is_perfect(n: int) -> bool:
+def is_perfect(n):
     if n <= 0:
+        return False  # Handle non-positive numbers
+    divisors_sum = sum(i for i in range(1, n) if n % i == 0)
+    return divisors_sum == n
+def is_armstrong(n):
+    if n < 0:
         return False
-    return sum(i for i in range(1, n) if n % i == 0) == n
-
-def get_fun_fact(n: int, is_armstrong_num: bool) -> str:
-    if is_armstrong_num:
-        digits = [int(d) for d in str(n)]
-        power = len(digits)
-        terms = [f"{d}^{power}" for d in digits]
-        return f"{n} is an Armstrong number because {' + '.join(terms)} = {n}"
-    
+    digits = [int(digit) for digit in str(n)]
+    return sum(d ** len(digits) for d in digits) == n
+def digit_sum(n):
+    return sum(int(digit) for digit in str(abs(n)))
+@app.route('/api/classify-number', methods=['GET'])
+def classify_number():
     try:
-        response = requests.get(f"http://numbersapi.com/{n}/math?json", timeout=3)
-        response.raise_for_status()
-        data = response.json()
-        return data.get('text', 'No fun fact available.')
-    except (requests.exceptions.RequestException, ValueError, KeyError):
-        return "No fun fact available."
-
-@app.get("/api/classify-number", response_model=Union[NumberResponse, ErrorResponse])
-async def classify_number(number: str = Query(...)):
-    try:
-        num = float(number)
-        if not num.is_integer():
-            raise ValueError
-        num = int(num)
-    except ValueError:
-        return ErrorResponse(number=number)  # Return model instance
-
-
-
-    armstrong = is_armstrong(num)
-    properties = ["armstrong"] if armstrong else []
-    properties.append("odd" if num % 2 else "even")
-
-    # Return as Pydantic model instead of raw dict
-    number_response = NumberResponse(
-        number=num,
-        is_prime=is_prime(num),
-        is_perfect=is_perfect(num),
-        properties=properties,
-        digit_sum=sum(int(d) for d in str(abs(num))),
-        fun_fact=get_fun_fact(num, armstrong)
-    )
-    return jsonable_encoder(number_response)
+        number = int(request.args.get('number'))
+    except (ValueError, TypeError):
+        return jsonify({"number": "alphabet", "error": True}), 400
+    # Calculate properties
+    prime = is_prime(number)
+    perfect = is_perfect(number)
+    armstrong = is_armstrong(number)
+    odd = number % 2 != 0
+    properties = []
+    if armstrong:
+        properties.append("armstrong")
+    if odd:
+        properties.append("odd")
+    else:
+        properties.append("even")
+    # Fetch the fun fact from Numbers API
+    fun_fact_response = requests.get(f"http://numbersapi.com/{number}?json")
+    fun_fact = fun_fact_response.json().get('text', f"No fun fact available for {number}")
+    # Prepare response
+    response = {
+        "number": number,
+        "is_prime": prime,
+        "is_perfect": perfect,
+        "properties": properties,
+        "digit_sum": digit_sum(number),
+        "fun_fact": fun_fact
+    }
+    return jsonify(response), 200
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
