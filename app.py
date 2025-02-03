@@ -1,7 +1,8 @@
 from flask import Flask, request, jsonify
-import requests
+import requests # type: ignore
 
 app = Flask(__name__)
+from flask_cors import CORS # type: ignore
 
 
 def is_prime(n):
