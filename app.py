@@ -1,75 +1,73 @@
-import os
 from flask import Flask, request, jsonify
 import requests
-from flask_cors import CORS
 
 app = Flask(__name__)
-CORS(app)
 
-# Helper functions to determine properties of a number
+
 def is_prime(n):
-    if n <= 1:
+    if n < 2:
         return False
     for i in range(2, int(n ** 0.5) + 1):
         if n % i == 0:
             return False
     return True
 
-def is_perfect(n):
-    if n <= 0:
-        return False  # Handle non-positive numbers
-    divisors_sum = sum(i for i in range(1, n) if n % i == 0)
-    return divisors_sum == n
-
 
 def is_armstrong(n):
-    if n < 0:
+    digits = [int(d) for d in str(n)]
+    power = len(digits)
+    return sum(d ** power for d in digits) == n
+
+
+def is_perfect(n):
+    if n <= 0:  
         return False
-    digits = [int(digit) for digit in str(n)]
-    return sum(d ** len(digits) for d in digits) == n
+    return sum(i for i in range(1, n) if n % i == 0) == n
 
-def digit_sum(n):
-    return sum(int(digit) for digit in str(abs(n)))
 
+def get_fun_fact(n):
+    response = requests.get(f"http://numbersapi.com/{n}/math?json")
+    if response.status_code == 200:
+        return response.json().get("text", "No fun fact available.")
+    return "No fun fact available."
 
 @app.route('/api/classify-number', methods=['GET'])
 def classify_number():
+    number_str = request.args.get('number')
+    
+    # Validate input as numeric
     try:
-        number = int(request.args.get('number'))
-
+        num_float = float(number_str)
     except (ValueError, TypeError):
-        return jsonify({"number": "alphabet", "error": True}), 400
+        return jsonify({
+            "number": number_str,
+            "error": "Invalid input: not a number"
+        }), 400
 
-    # Calculate properties
-    prime = is_prime(number)
-    perfect = is_perfect(number)
-    armstrong = is_armstrong(number)
-    odd = number % 2 != 0
+    if not num_float.is_integer():
+        return jsonify({
+            "number": num_float,
+            "error": "Number must be an integer (no decimal)"
+        }), 400
+
+    num = int(num_float)  
+
+    
     properties = []
-
-    if armstrong:
+    if is_armstrong(num):
         properties.append("armstrong")
-    if odd:
-        properties.append("odd")
-    else:
-        properties.append("even")
+    properties.append("odd" if num % 2 != 0 else "even")
 
-    # Fetch the fun fact from Numbers API
-    fun_fact_response = requests.get(f"http://numbersapi.com/{number}?json")
-    fun_fact = fun_fact_response.json().get('text', f"No fun fact available for {number}")
-
-    # Prepare response
-    response = {
-        "number": number,
-        "is_prime": prime,
-        "is_perfect": perfect,
+    response_data = {
+        "number": num,
+        "is_prime": is_prime(num),
+        "is_perfect": is_perfect(num),
         "properties": properties,
-        "digit_sum": digit_sum(number),
-        "fun_fact": fun_fact
+        "digit_sum": sum(int(d) for d in str(abs(num))),  
+        "fun_fact": get_fun_fact(num)
     }
 
-    return jsonify(response), 200
+    return jsonify(response_data)
 
 if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 5000))
-    app.run(host='0.0.0.0', port=port, debug=True)
+    app.run(host='0.0.0.0', port=5000, debug=True)
