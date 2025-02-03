@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request
 import requests
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # CORS
 @app.after_request
@@ -41,15 +41,17 @@ def get_fun_fact(n):
 @app.route('/api/classify-number', methods=['GET'])
 def classify_number():
     number = request.args.get('number')
-    
+
     # Input validation
-    if not number or not number.lstrip('-').isdigit():
-        return jsonify({
-            "number": number if number else "null",
-            "error": True
-        }), 400
+    if not number:
+        return jsonify({"number": "null", "error": True}), 400
     
-    number = int(number)
+    if number.isdigit() or (number.startswith('-') and number[1:].isdigit()):
+        number = int(number)
+    elif number.isalpha():
+        return jsonify({"number": "alphabet", "error": True}), 400
+    else:
+        return jsonify({"number": "number and alphabet", "error": True}), 400
     
     # Determine properties
     properties = []
@@ -59,7 +61,6 @@ def classify_number():
         properties.append("even")
     else:
         properties.append("odd")
-    
    
     response = {
         "number": number,
@@ -72,5 +73,5 @@ def classify_number():
     
     return jsonify(response), 200
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     app.run(debug=True)
