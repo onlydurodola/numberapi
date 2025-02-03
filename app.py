@@ -53,7 +53,7 @@ def classify_number():
         "fun_fact": get_fun_fact(num)
     }
 
-    return response_data
+    return jsonify(response_data), 200
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
