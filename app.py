@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 import json
-app = Flask(_name_)
+app = Flask(__name__)
 def is_prime(n):
     if n < 2:
         return False
@@ -44,5 +44,5 @@ def classify_number():
     response = jsonify(response_data)
     response.headers["Content-Type"] = "application/json"
     return response
-if _name_ == '_main_':
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
