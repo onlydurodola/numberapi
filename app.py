@@ -1,82 +1,58 @@
-from flask import Flask, jsonify, request
+from flask import Flask, request, jsonify
 import requests
-import os
 
 app = Flask(__name__)
 
-# CORS
-@app.after_request
-def after_request(response):
-    response.headers.add('Access-Control-Allow-Origin', '*')
-    return response
-
-# Functions
+# Function to check if a number is prime
 def is_prime(n):
     if n < 2:
         return False
-    for i in range(2, int(n**0.5) + 1):
+    for i in range(2, int(n ** 0.5) + 1):
         if n % i == 0:
             return False
     return True
 
-def is_perfect(n):
-    if n < 2:
-        return False
-    divisors = [i for i in range(1, n) if n % i == 0]
-    return sum(divisors) == n
-
+# Function to check if a number is an Armstrong number
 def is_armstrong(n):
     digits = [int(d) for d in str(n)]
-    length = len(digits)
-    return sum(d**length for d in digits) == n
+    power = len(digits)
+    return sum(d ** power for d in digits) == n
 
-def digit_sum(n):
-    return sum(int(d) for d in str(n))
+# Function to check if a number is perfect
+def is_perfect(n):
+    return sum(i for i in range(1, n) if n % i == 0) == n
 
+# Function to get a fun fact about the number
 def get_fun_fact(n):
-    url = f"http://numbersapi.com/{n}/math"
-    response = requests.get(url)
-    return response.text  # Directly return the API response text
+    response = requests.get(f"http://numbersapi.com/{n}/math?json")
+    if response.status_code == 200:
+        return response.json().get("text", "No fun fact available.")
+    return "No fun fact available."
 
-# Main endpoint
 @app.route('/api/classify-number', methods=['GET'])
 def classify_number():
-    print("API called")
     number = request.args.get('number')
-
-    # Input validation
-    if not number:
-        return jsonify({"number": "null", "error": True}), 400
     
-    if number.isdigit() or (number.startswith('-') and number[1:].isdigit()):
-        number = int(number)
-    elif number.isalpha():
-        return jsonify({"number": "alphabet", "error": True}), 400
-    else:
-        return jsonify({"number": "number and alphabet", "error": True}), 400
+    if not number.isdigit():
+        return jsonify({"number": number, "error": True}), 400
     
-    # Determine properties
+    num = int(number)
     properties = []
-    if is_armstrong(number):
+    
+    if is_armstrong(num):
         properties.append("armstrong")
-    if number % 2 == 0:
-        properties.append("even")
-    else:
-        properties.append("odd")
-   
-    response = {
-        "number": number,
-        "is_prime": is_prime(number),
-        "is_perfect": is_perfect(number),
+    properties.append("odd" if num % 2 != 0 else "even")
+    
+    response_data = {
+        "number": num,
+        "is_prime": is_prime(num),
+        "is_perfect": is_perfect(num),
         "properties": properties,
-        "digit_sum": digit_sum(number),
-        "fun_fact": get_fun_fact(number)  
+        "digit_sum": sum(int(d) for d in str(num)),
+        "fun_fact": get_fun_fact(num)
     }
     
-    return jsonify(response), 200
-@app.route('/')
-def root():
-    return "Welcome to the Number API! Access /api/classify-number?number=N to classify a number.", 200
+    return jsonify(response_data)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
+    app.run(host='0.0.0.0', port=5000, debug=True)
