@@ -1,4 +1,5 @@
 from fastapi import FastAPI, Query
+from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel
 import requests
 from typing import Union
@@ -58,14 +59,16 @@ async def classify_number(number: str = Query(...)):
             raise ValueError
         num = int(num)
     except ValueError:
-        return ErrorResponse(number=number)  # Return model instance
+        ErrorResponse(number=number)  # Return model instance
+        return jsonable_encoder(ErrorResponse)
+
 
     armstrong = is_armstrong(num)
     properties = ["armstrong"] if armstrong else []
     properties.append("odd" if num % 2 else "even")
 
     # Return as Pydantic model instead of raw dict
-    return NumberResponse(
+    NumberResponse(
         number=num,
         is_prime=is_prime(num),
         is_perfect=is_perfect(num),
@@ -73,3 +76,4 @@ async def classify_number(number: str = Query(...)):
         digit_sum=sum(int(d) for d in str(abs(num))),
         fun_fact=get_fun_fact(num, armstrong)
     )
+    return jsonable_encoder(NumberResponse)
