@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 
-app = Flask(__name__)
+app = Flask(_name_)
 
 # Function to check if a number is prime
 def is_prime(n):
@@ -20,6 +20,8 @@ def is_armstrong(n):
 
 # Function to check if a number is perfect
 def is_perfect(n):
+    if n <= 0:  # Handle negative numbers and zero
+        return False
     return sum(i for i in range(1, n) if n % i == 0) == n
 
 # Function to get a fun fact about the number
@@ -33,26 +35,27 @@ def get_fun_fact(n):
 def classify_number():
     number = request.args.get('number')
 
-    if not number.isdigit():
+    try:
+        num = float(number) 
+    except ValueError:
         return jsonify({"number": "alphabet", "error": True}), 400
 
-    num = int(number)
     properties = []
 
-    if is_armstrong(num):
+    if is_armstrong(int(num)): 
         properties.append("armstrong")
-    properties.append("odd" if num % 2 != 0 else "even")
+    properties.append("odd" if int(num) % 2 != 0 else "even")
 
     response_data = {
-        "number": num,
-        "is_prime": is_prime(num),
-        "is_perfect": is_perfect(num),
+        "number": num, # Return the original float number
+        "is_prime": is_prime(int(num)) if num > 0 else False, 
+        "is_perfect": is_perfect(int(num)), 
         "properties": properties,
-        "digit_sum": sum(int(d) for d in str(num)),
-        "fun_fact": get_fun_fact(num)
+        "digit_sum": sum(int(d) for d in str(int(num))) if num > 0 else 0, 
+        "fun_fact": get_fun_fact(int(num)) 
     }
 
-    return jsonify(response_data)
+    return jsonify(response_data), 200 # Return 200 for all valid numbers
 
-if __name__ == '__main__':
+if _name_ == '_main_':
     app.run(host='0.0.0.0', port=5000, debug=True)
