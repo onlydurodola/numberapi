@@ -40,6 +40,7 @@ def get_fun_fact(n):
 # Main endpoint
 @app.route('/api/classify-number', methods=['GET'])
 def classify_number():
+    print("API called")
     number = request.args.get('number')
 
     # Input validation
