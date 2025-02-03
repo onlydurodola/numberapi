@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 import requests
 
-app = Flask(_name_)
+app = Flask(__name__)
 
 # Function to check if a number is prime
 def is_prime(n):
@@ -57,5 +57,5 @@ def classify_number():
 
     return jsonify(response_data), 200 # Return 200 for all valid numbers
 
-if _name_ == '_main_':
+if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=True)
