@@ -1,10 +1,11 @@
 from fastapi import FastAPI, Query, HTTPException
-import requests
 from pydantic import BaseModel
-from typing import Dict, Any
+import requests
+from typing import Union
 
 app = FastAPI()
 
+# Response models to enforce JSON structure and key order
 class NumberResponse(BaseModel):
     number: int
     is_prime: bool
@@ -15,12 +16,13 @@ class NumberResponse(BaseModel):
 
 class ErrorResponse(BaseModel):
     number: str
-    error: bool = True  # Default value for error
+    error: bool = True
 
+# Math validation functions
 def is_prime(n: int) -> bool:
     if n < 2:
         return False
-    for i in range(2, int(n ** 0.5) + 1):
+    for i in range(2, int(n**0.5) + 1):
         if n % i == 0:
             return False
     return True
@@ -35,17 +37,18 @@ def is_perfect(n: int) -> bool:
         return False
     return sum(i for i in range(1, n) if n % i == 0) == n
 
-def get_fun_fact(n: int, is_armstrong_num: bool) -> str:
-    if is_armstrong_num:
-        digits = [int(d) for d in str(n)]
-        power = len(digits)
-        explanation = " + ".join([f"{d}^{power}" for d in digits])
-        return f"{n} is an Armstrong number because {explanation} = {n}"
-    response = requests.get(f"http://numbersapi.com/{n}/math?json")
-    return response.json().get("text", "No fun fact available.") if response.ok else "No fun fact available."
+def generate_armstrong_fact(n: int) -> str:
+    digits = [int(d) for d in str(n)]
+    power = len(digits)
+    terms = [f"{d}^{power}" for d in digits]
+    return f"{n} is an Armstrong number because {' + '.join(terms)} = {n}"
 
-@app.get("/api/classify-number", response_model=NumberResponse, responses={400: {"model": ErrorResponse}})
+# API endpoint
+@app.get("/api/classify-number", 
+         response_model=Union[NumberResponse, ErrorResponse],
+         responses={400: {"model": ErrorResponse}})
 async def classify_number(number: str = Query(...)):
+    # Input validation
     try:
         num = float(number)
         if not num.is_integer():
@@ -53,18 +56,38 @@ async def classify_number(number: str = Query(...)):
         num = int(num)
     except ValueError:
         return ErrorResponse(number=number)
-
+    
+    # Calculate properties
     armstrong = is_armstrong(num)
-    properties = ["armstrong"] if armstrong else []
-    properties.append("odd" if num % 2 else "even")
-
-    response_data = {
+    prime = is_prime(num)
+    perfect = is_perfect(num)
+    parity = "odd" if num % 2 else "even"
+    
+    # Build properties list
+    properties = []
+    if armstrong:
+        properties.append("armstrong")
+    properties.append(parity)
+    
+    # Generate fun fact
+    fun_fact = generate_armstrong_fact(num) if armstrong else \
+               requests.get(f"http://numbersapi.com/{num}/math").json().get("text", "No fun fact available")
+    
+    # Build response with ordered keys
+    return {
         "number": num,
-        "is_prime": is_prime(num),
-        "is_perfect": is_perfect(num),
+        "is_prime": prime,
+        "is_perfect": perfect,
         "properties": properties,
         "digit_sum": sum(int(d) for d in str(abs(num))),
-        "fun_fact": get_fun_fact(num, armstrong)
+        "fun_fact": fun_fact
     }
 
-    return response_data
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(
+        app, 
+        host="0.0.0.0",  # Allow external access
+        port=8000,        # Default FastAPI port
+        log_level="debug" # Optional for troubleshooting
+    )
