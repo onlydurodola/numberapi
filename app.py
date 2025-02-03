@@ -34,7 +34,7 @@ def classify_number():
     number = request.args.get('number')
 
     if not number.isdigit():
-        return jsonify({"number": number, "error": True}), 400
+        return jsonify({"number": "alphabet", "error": True}), 400
 
     num = int(number)
     properties = []
