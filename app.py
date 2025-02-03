@@ -1,82 +1,79 @@
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Query, HTTPException
 import requests
-from collections import OrderedDict
+from pydantic import BaseModel, validator
+from typing import List
 
-app = Flask(__name__)
+app = FastAPI()
 
-def is_prime(n):
+# Define response models
+class NumberResponse(BaseModel):
+    number: int
+    is_prime: bool
+    is_perfect: bool
+    properties: List[str]
+    digit_sum: int
+    fun_fact: str
+
+    @validator("properties")  # Ensure consistent order
+    def validate_properties(cls, properties):
+        if "armstrong" in properties:
+            return ["armstrong"] + [p for p in properties if p != "armstrong"]  # armstrong first
+        return properties
+
+class ErrorResponse(BaseModel):
+    number: str
+    error: bool = True
+
+def is_prime(n: int) -> bool:
     if n < 2:
         return False
-    for i in range(2, int(n ** 0.5) + 1):
+    for i in range(2, int(n**0.5) + 1):
         if n % i == 0:
             return False
     return True
 
-def is_armstrong(n):
+def is_armstrong(n: int) -> bool:
     digits = [int(d) for d in str(n)]
     power = len(digits)
-    return sum(d ** power for d in digits) == n
+    return sum(d**power for d in digits) == n
 
-def is_perfect(n):
+def is_perfect(n: int) -> bool:
     if n <= 0:
         return False
     return sum(i for i in range(1, n) if n % i == 0) == n
 
-def get_fun_fact(n):
-    response = requests.get(f"http://numbersapi.com/{n}/math?json")
-    if response.status_code == 200:
-        return response.json().get("text", "No fun fact available.")
-    return "No fun fact available."
-
-@app.route('/api/classify-number', methods=['GET'])
-def classify_number():
-    number_str = request.args.get('number')
-    
-    # Validate input as a number
+def get_fun_fact(n: int) -> str:  # No longer needs is_armstrong_num
     try:
-        num_float = float(number_str)
-    except (ValueError, TypeError):
-        return jsonify(OrderedDict([
-            ("number", number_str),
-            ("error", True)
-        ])), 400
+        response = requests.get(f"http://numbersapi.com/{n}/math?json", timeout=5)
+        response.raise_for_status()
+        data = response.json()
+        return data.get("text", "No fun fact available.")
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching fun fact: {e}")
+        return "No fun fact available."
 
-    # Check if it's an integer
-    if not num_float.is_integer():
-        return jsonify(OrderedDict([
-            ("number", num_float),
-            ("error", True)
-        ])), 400
-
-    num = int(num_float)
+@app.get("/api/classify-number", response_model=NumberResponse, responses={400: {"model": ErrorResponse}})
+async def classify_number(number: str = Query(...)):
+    try:
+        num = int(number) # Directly convert to int, handle ValueError if not an int
+    except ValueError:
+        return ErrorResponse(number=number)
 
     properties = []
-    is_armstrong_num = is_armstrong(num)
-    if is_armstrong_num:
+    if is_armstrong(num):
         properties.append("armstrong")
-    parity = "odd" if num % 2 != 0 else "even"
-    properties.append(parity)
-
-    # Generate fun fact for Armstrong numbers
-    if is_armstrong_num:
-        digits = [int(d) for d in str(num)]
-        power = len(digits)
-        sum_powers = sum(d ** power for d in digits)
-        explanation = " + ".join([f"{d}^{power}" for d in digits]) + f" = {sum_powers}"
-        fun_fact = f"{num} is an Armstrong number because {explanation}"
+    if num % 2 != 0:
+        properties.append("odd")
     else:
-        fun_fact = get_fun_fact(num)
+        properties.append("even")
 
-    response_data = OrderedDict([
-        ("number", num),
-        ("is_prime", is_prime(num)),
-        ("is_perfect", is_perfect(num)),
-        ("properties", properties),
-        ("digit_sum", sum(int(d) for d in str(abs(num)))),
-        ("fun_fact", fun_fact)
-    ])
+    response_data = {
+        "number": num,
+        "is_prime": is_prime(num),
+        "is_perfect": is_perfect(num),
+        "properties": properties,
+        "digit_sum": sum(int(d) for d in str(abs(num))),
+        "fun_fact": get_fun_fact(num)
+    }
 
-    return jsonify(response_data), 200
-
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000, debug=True)
+    return response_data
