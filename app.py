@@ -58,17 +58,18 @@ async def classify_number(number: str = Query(...)):
             raise ValueError
         num = int(num)
     except ValueError:
-        return ErrorResponse(number=number)
+        return ErrorResponse(number=number)  # Return model instance
 
     armstrong = is_armstrong(num)
     properties = ["armstrong"] if armstrong else []
     properties.append("odd" if num % 2 else "even")
 
-    return {
-        "number": num,
-        "is_prime": is_prime(num),
-        "is_perfect": is_perfect(num),
-        "properties": properties,
-        "digit_sum": sum(int(d) for d in str(abs(num))),
-        "fun_fact": get_fun_fact(num, armstrong)
-    }
+    # Return as Pydantic model instead of raw dict
+    return NumberResponse(
+        number=num,
+        is_prime=is_prime(num),
+        is_perfect=is_perfect(num),
+        properties=properties,
+        digit_sum=sum(int(d) for d in str(abs(num))),
+        fun_fact=get_fun_fact(num, armstrong)
+    )
